@@ -519,3 +519,147 @@ Une vérification finale avec `docker ps` et `docker network ls` a confirmé que
 ## Conclusion
 
 L'étape `03-terraform-init.md` peut être considérée comme terminée. La configuration Terraform de base a été créée avec succès, le cycle complet `init -> plan -> apply -> destroy` a été validé, et le fonctionnement du provider Docker ainsi que la gestion du state ont été correctement vérifiés.
+
+# Terraform — Modules & Remote State
+
+## Contexte
+
+Cette partie du rapport présente le travail réalisé à partir du document `04-terraform-modules.md`. L'objectif principal était de transformer la configuration Terraform initiale en une structure modulaire, avec des modules réutilisables et un environnement `dev` dédié utilisant ces modules.
+
+## Travaux réalisés
+
+Les éléments suivants ont été mis en place :
+
+- création du module `webapp` ;
+- création du module `database` ;
+- création de l'environnement `dev` ;
+- intégration des modules dans l'environnement `dev` ;
+- validation du cycle `init -> plan -> apply -> destroy` sur cette nouvelle structure ;
+- gestion correcte d'une variable sensible pour le mot de passe de la base de données.
+
+## Structure modulaire créée
+
+La structure suivante a été ajoutée dans le projet :
+
+- `infra/terraform/modules/webapp`
+- `infra/terraform/modules/database`
+- `infra/terraform/environments/dev`
+
+Le module `webapp` gère :
+
+- l'image Docker de l'application ;
+- plusieurs conteneurs web selon le nombre de réplicas ;
+- les ports exposés ;
+- les labels liés à l'application et à l'environnement.
+
+Le module `database` gère :
+
+- l'image PostgreSQL ;
+- le conteneur de base de données ;
+- les variables d'environnement PostgreSQL ;
+- le volume de persistance local ;
+- la chaîne de connexion exposée en output sensible.
+
+L'environnement `dev` instancie les deux modules au sein d'un réseau Docker dédié.
+
+## Difficultés rencontrées
+
+Une difficulté importante a été rencontrée lors de l'initialisation de l'environnement modulaire :
+
+- Terraform essayait de résoudre le provider `hashicorp/docker` à l'intérieur des modules, alors que le projet utilise `kreuzwerker/docker`.
+
+## Solutions apportées
+
+Pour corriger ce problème, une déclaration explicite du provider `kreuzwerker/docker` a été ajoutée dans les modules `webapp` et `database`.
+
+Après cette correction :
+
+- `terraform init` a fonctionné correctement ;
+- les modules ont pu être initialisés sans ambiguïté ;
+- le plan Terraform a été généré normalement.
+
+## Validation de l'environnement `dev`
+
+### Initialisation
+
+La commande suivante a été exécutée :
+
+```bash
+terraform -chdir=infra/terraform/environments/dev init
+```
+
+Résultat :
+
+- initialisation correcte de l'environnement ;
+- chargement des modules locaux ;
+- installation du provider Docker.
+
+### Plan
+
+Le plan a été exécuté avec un mot de passe transmis comme variable sensible temporaire :
+
+```bash
+TF_VAR_db_password=secret123 terraform -chdir=infra/terraform/environments/dev plan -var-file=terraform.tfvars
+```
+
+Le plan a correctement annoncé la création de :
+
+- un réseau Docker `devops-dev` ;
+- deux conteneurs web ;
+- un conteneur PostgreSQL ;
+- les outputs `web_urls` et `db_connection`.
+
+### Apply
+
+La commande suivante a été exécutée :
+
+```bash
+TF_VAR_db_password=secret123 terraform -chdir=infra/terraform/environments/dev apply -auto-approve -var-file=terraform.tfvars
+```
+
+Résultat :
+
+- création de deux conteneurs web :
+  - `devops-app-dev-0`
+  - `devops-app-dev-1`
+- création du conteneur de base de données :
+  - `devops-app-db-dev`
+- exposition correcte des ports `8080`, `8081` et `5432`.
+
+### Vérifications après apply
+
+Les validations suivantes ont été réalisées :
+
+```bash
+curl http://localhost:8080
+curl http://localhost:8081
+docker ps
+terraform -chdir=infra/terraform/environments/dev state list
+```
+
+Résultats observés :
+
+- les deux endpoints web répondent correctement ;
+- les trois conteneurs attendus sont présents ;
+- le state contient bien le réseau, les conteneurs et les images gérés par les modules.
+
+### Destroy
+
+Le nettoyage complet a été exécuté avec la commande suivante :
+
+```bash
+TF_VAR_db_password=secret123 terraform -chdir=infra/terraform/environments/dev destroy -auto-approve -var-file=terraform.tfvars
+```
+
+Résultat :
+
+- suppression des deux conteneurs web ;
+- suppression du conteneur PostgreSQL ;
+- suppression des images gérées par Terraform ;
+- suppression du réseau `devops-dev`.
+
+Une vérification finale avec `docker ps` et `docker network ls` a confirmé que les ressources de cette étape avaient bien été supprimées.
+
+## Conclusion
+
+L'étape `04-terraform-modules.md` peut être considérée comme terminée. La configuration Terraform a été refactorisée en modules réutilisables, l'environnement `dev` a été validé avec succès, et le cycle complet `init -> plan -> apply -> destroy` a été exécuté correctement dans la nouvelle structure modulaire.
