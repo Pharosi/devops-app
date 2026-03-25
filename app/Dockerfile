@@ -1,18 +1,42 @@
-FROM node:20-alpine AS test
+# -- Stage 1 : Dependencies --
+FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY src ./src
-COPY test ./test
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts && mkdir -p node_modules
+
+# -- Stage 2 : Test --
+FROM deps AS test
+COPY . .
 RUN npm test
 
+# -- Stage 3 : Production --
 FROM node:20-alpine AS production
+
+# Securite : user non-root
+RUN addgroup -g 1001 appgroup && \
+    adduser -u 1001 -G appgroup -s /bin/sh -D appuser
+
 WORKDIR /app
+
 ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY src ./src
-USER node
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && \
+    npm cache clean --force
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY src/ ./src/
+
+LABEL maintainer="devops-team"
+LABEL version="1.0"
+
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- http://127.0.0.1:3000/health >/dev/null || exit 1
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+
 CMD ["node", "src/index.js"]

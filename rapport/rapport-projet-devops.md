@@ -820,3 +820,138 @@ Résultat :
 ## Conclusion
 
 L'étape `05-ansible-playbook.md` peut être considérée comme terminée. L'infrastructure de test, l'inventaire, les playbooks, les roles et la démonstration d'idempotence ont été validés avec succès dans un environnement Docker local.
+
+# Docker avancé
+
+## Contexte
+
+Cette partie du rapport présente le travail réalisé à partir du document `06-docker-avance.md`. L'objectif était de comparer une image Docker volontairement non optimisée avec une image multi-stage plus propre, puis de valider une stack complète avec Docker Compose, PostgreSQL, Redis et Nginx.
+
+## Travaux réalisés
+
+Les éléments suivants ont été mis en place :
+
+- création du fichier `app/Dockerfile.bad` selon l'anti-pattern proposé dans le document ;
+- adaptation du `app/Dockerfile` multi-stage pour rester au plus proche des consignes tout en conservant un build fonctionnel sur le projet réel ;
+- mise à jour de `app/.dockerignore` ;
+- création de `docker-compose.yml` à la racine ;
+- création de `nginx/default.conf` ;
+- validation du build des images et de la stack complète.
+
+## Image non optimisée
+
+Le fichier `app/Dockerfile.bad` a été conservé dans une version fidèle au document de consignes :
+
+```dockerfile
+FROM ubuntu:22.04
+RUN apt-get update
+RUN apt-get install -y nodejs npm curl wget git python3
+COPY . /app
+WORKDIR /app
+RUN npm install
+EXPOSE 3000
+CMD ["node", "src/index.js"]
+```
+
+Cette image a bien été construite jusqu'au bout. La build s'est révélée très lente sur le réseau disponible, ce qui confirme le caractère peu optimisé de cette approche.
+
+Résultat observé :
+
+- `app:bad` = `1.57GB`
+
+## Dockerfile optimisé multi-stage
+
+Le fichier `app/Dockerfile` a été structuré en trois stages :
+
+- `deps`
+- `test`
+- `production`
+
+Les points principaux validés sont les suivants :
+
+- utilisation d'une image Alpine plus légère ;
+- séparation des dépendances, des tests et de la production ;
+- exécution du conteneur avec un utilisateur non-root `appuser` ;
+- présence d'un `HEALTHCHECK` ;
+- réduction importante de la taille de l'image finale.
+
+Une légère adaptation technique a été conservée pour le projet réel afin de permettre la présence du répertoire `node_modules` dans le stage `deps`, tout en gardant la logique du document.
+
+Résultat observé :
+
+- `app:optimized` = `194MB`
+
+## Comparaison des tailles
+
+La comparaison finale des tailles montre un écart très important entre les deux approches :
+
+- `app:bad` = `1.57GB`
+- `app:optimized` = `194MB`
+
+Cette comparaison valide l'intérêt du multi-stage build et d'une image de production plus minimale.
+
+## Sécurité et inspection de l'image optimisée
+
+Les vérifications suivantes ont été effectuées :
+
+```bash
+docker run --rm app:optimized whoami
+docker history app:optimized
+```
+
+Résultats :
+
+- le conteneur optimisé s'exécute avec l'utilisateur `appuser` ;
+- l'historique des layers confirme une image plus propre et mieux structurée que l'image non optimisée.
+
+Le scan Trivy mentionné dans le document n'a pas été intégré à cette étape afin de respecter l'ordre pédagogique du cours, la partie DevSecOps étant traitée plus loin dans les consignes.
+
+## Validation de la stack Docker Compose
+
+La stack suivante a été mise en place :
+
+- `app`
+- `postgres`
+- `redis`
+- `nginx`
+
+La commande suivante a été exécutée :
+
+```bash
+docker compose up -d
+```
+
+Puis les vérifications suivantes ont été réalisées :
+
+```bash
+docker compose ps
+docker compose logs app
+curl http://localhost:80
+curl http://localhost:80/health
+```
+
+Résultats observés :
+
+- les quatre services ont démarré correctement ;
+- l'application a bien démarré sur le port `3000` ;
+- Nginx a correctement joué le rôle de reverse proxy ;
+- `curl http://localhost:80` a retourné un statut `200 OK` avec le JSON attendu ;
+- `curl http://localhost:80/health` a retourné un statut `200 OK`.
+
+## Nettoyage
+
+Une fois la validation terminée, la stack a été arrêtée avec :
+
+```bash
+docker compose down -v
+```
+
+Résultat :
+
+- suppression des conteneurs ;
+- suppression du réseau ;
+- suppression du volume PostgreSQL utilisé pour les tests.
+
+## Conclusion
+
+L'étape `06-docker-avance.md` peut être considérée comme terminée. La comparaison entre une image non optimisée et une image multi-stage a été validée, l'exécution non-root a été confirmée, et la stack complète avec Docker Compose, PostgreSQL, Redis et Nginx a été testée avec succès.
