@@ -243,3 +243,136 @@ Un avertissement subsiste concernant certaines actions Docker encore liées à N
 ## Conclusion
 
 L'étape `01-pipeline-cicd.md` peut être considérée comme terminée. L'application a été validée localement, le `Dockerfile` multi-stage a été confirmé, l'image Docker a été construite avec succès et le pipeline CI/CD a été mis en place puis exécuté correctement sur GitHub Actions.
+
+# GitHub Actions avancé
+
+## Contexte
+
+Cette partie du rapport présente le travail réalisé à partir du document `02-github-actions.md`. L'objectif était d'aller plus loin dans l'utilisation de GitHub Actions en mettant en place un workflow réutilisable, des environnements protégés, une action composite locale et une pipeline plus modulaire.
+
+## Travaux réalisés
+
+Les éléments suivants ont été mis en place :
+
+- création d'un workflow réutilisable pour la construction Docker ;
+- modification du pipeline principal pour appeler ce workflow réutilisable ;
+- ajout de deux étapes de déploiement distinctes : `staging` et `production` ;
+- création d'une action composite locale pour préparer et vérifier certains outils DevOps ;
+- intégration de cette action composite dans le pipeline ;
+- configuration des environnements `staging` et `production` dans GitHub ;
+- validation du comportement du pipeline sur les branches `develop` et `main`.
+
+## Workflow réutilisable
+
+Un fichier `.github/workflows/reusable-docker.yml` a été créé afin d'extraire la logique de build Docker hors du workflow principal.
+
+Ce workflow réutilisable reçoit notamment :
+
+- le nom de l'image ;
+- le contexte Docker ;
+- le nom du `Dockerfile`.
+
+Il centralise les opérations suivantes :
+
+- récupération du code ;
+- génération des métadonnées Docker ;
+- préparation de Buildx ;
+- construction de l'image avec cache GitHub Actions.
+
+Cette approche permet d'éviter la duplication du code de build et rend la pipeline plus claire et plus maintenable.
+
+## Adaptation du workflow principal
+
+Le fichier `.github/workflows/ci.yml` a été modifié pour que le job `build` appelle désormais le workflow réutilisable.
+
+Le pipeline principal conserve les étapes suivantes :
+
+- `test`
+- `build`
+- `security`
+- `deploy-staging`
+- `deploy-production`
+
+Le comportement attendu a été conservé, mais avec une meilleure organisation interne.
+
+## Action composite locale
+
+Une action composite locale a été créée dans `.github/actions/setup-tools/action.yml`.
+
+Cette action permet :
+
+- d'installer Terraform ;
+- de vérifier la disponibilité de certains outils comme Terraform, Docker et kubectl.
+
+Elle a ensuite été intégrée dans le job `security` du workflow principal.
+
+## Environnements GitHub
+
+Deux environnements ont été configurés dans les paramètres du dépôt GitHub :
+
+### `staging`
+
+Configuration appliquée :
+
+- aucune règle de protection ;
+- déploiement automatique autorisé.
+
+### `production`
+
+Configuration appliquée :
+
+- un reviewer requis ;
+- un délai d'attente de 5 minutes ;
+- validation manuelle nécessaire avant la poursuite du déploiement.
+
+Cette configuration correspond aux consignes du document de référence.
+
+## Validation du comportement de la pipeline
+
+### Validation sur `develop`
+
+Une exécution de la pipeline a été observée sur la branche `develop`.
+
+Résultats :
+
+- `test` : réussi ;
+- `build / docker-build` : réussi ;
+- `security` : réussi ;
+- `deploy-staging` : réussi ;
+- `deploy-production` : non exécuté, ce qui est normal car il est réservé à la branche `main`.
+
+### Validation sur `main`
+
+Une validation a ensuite été réalisée sur la branche `main`.
+
+Résultats :
+
+- `test` : réussi ;
+- `build / docker-build` : réussi ;
+- `security` : réussi ;
+- `deploy-staging` : réussi ;
+- `deploy-production` : déclenché avec protection active.
+
+Lors de cette exécution, le déploiement vers `production` a nécessité une approbation manuelle, puis a respecté le délai d'attente configuré. Ce comportement confirme que les règles de protection de l'environnement `production` fonctionnent correctement.
+
+## Difficultés rencontrées
+
+Plusieurs points ont demandé une attention particulière :
+
+- compréhension du rôle exact d'un workflow réutilisable ;
+- adaptation du pipeline à la structure réelle du projet ;
+- gestion correcte de la distinction entre `staging` et `production` ;
+- validation du comportement réel du déploiement protégé dans GitHub Actions.
+
+## Solutions apportées
+
+Les solutions suivantes ont été mises en place :
+
+- séparation claire de la logique Docker dans un workflow dédié ;
+- intégration progressive des nouvelles fonctionnalités sans casser le pipeline existant ;
+- test sur `develop` pour valider le flux standard ;
+- test sur `main` pour valider les protections de l'environnement `production`.
+
+## Conclusion
+
+L'étape `02-github-actions.md` peut être considérée comme terminée. Le projet dispose désormais d'un workflow Docker réutilisable, d'une action composite locale, d'environnements GitHub correctement configurés et d'une pipeline avancée validée sur `develop` et `main`.
