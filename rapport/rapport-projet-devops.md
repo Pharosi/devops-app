@@ -663,3 +663,160 @@ Une vérification finale avec `docker ps` et `docker network ls` a confirmé que
 ## Conclusion
 
 L'étape `04-terraform-modules.md` peut être considérée comme terminée. La configuration Terraform a été refactorisée en modules réutilisables, l'environnement `dev` a été validé avec succès, et le cycle complet `init -> plan -> apply -> destroy` a été exécuté correctement dans la nouvelle structure modulaire.
+
+# Ansible — Playbooks & Roles
+
+## Contexte
+
+Cette partie du rapport présente le travail réalisé à partir du document `05-ansible-playbook.md`. L'objectif était de mettre en place une base Ansible fonctionnelle avec des conteneurs Docker jouant le rôle de serveurs cibles, puis de valider l'utilisation des playbooks, des handlers, des roles et de l'idempotence.
+
+## Travaux réalisés
+
+Les éléments suivants ont été créés dans `infra/ansible` :
+
+- une infrastructure de test avec `docker-compose.yml` ;
+- un inventaire Ansible avec deux groupes de machines ;
+- un playbook de base ;
+- un playbook Nginx avec handler ;
+- une structure en roles (`base`, `nginx`, `app`) ;
+- un playbook principal `site.yml` ;
+- un fichier `ansible.cfg` pour stabiliser l'exécution locale.
+
+## Infrastructure de test
+
+Deux conteneurs Docker ont été utilisés comme serveurs cibles :
+
+- `ansible-node1`
+- `ansible-node2`
+
+Ils sont reliés via le réseau Docker `ansible-net`.
+
+Afin de rendre les conteneurs Ubuntu réellement utilisables par Ansible, la configuration de démarrage a été adaptée pour installer automatiquement :
+
+- `python3`
+- `sudo`
+
+Cette adaptation était nécessaire car les images Ubuntu minimales ne disposaient pas des prérequis Ansible au démarrage.
+
+## Inventaire et connectivité
+
+L'inventaire a été structuré en deux groupes :
+
+- `webservers`
+- `appservers`
+
+La connexion a été configurée avec :
+
+```yaml
+ansible_connection: docker
+```
+
+Après ajustement de la configuration Ansible locale, la commande suivante a été validée :
+
+```bash
+ansible all -i inventory.yml -m ping
+```
+
+Résultat :
+
+- `ansible-node1` : `pong`
+- `ansible-node2` : `pong`
+
+## Playbooks et roles
+
+Les éléments suivants ont été mis en place :
+
+### Playbook de base
+
+Le fichier `playbook-base.yml` permet :
+
+- la mise à jour du cache `apt` ;
+- l'installation de paquets de base ;
+- la création du répertoire `/opt/app` ;
+- le déploiement d'un fichier `.env`.
+
+### Playbook Nginx
+
+Le fichier `playbook-nginx.yml` permet :
+
+- l'installation de Nginx ;
+- le déploiement de la configuration du site ;
+- le déploiement d'une page HTML ;
+- le redémarrage de Nginx via un handler.
+
+### Roles
+
+Les roles suivants ont été structurés :
+
+- `base`
+- `nginx`
+- `app`
+
+Le role `nginx` utilise des templates Jinja2 pour :
+
+- la configuration Nginx ;
+- la page d'accueil HTML.
+
+Le role `app` a été gardé simple afin de rester cohérent avec le document tout en évitant un role vide.
+
+## Exécution du playbook principal
+
+Le playbook principal `site.yml` a été exécuté avec succès.
+
+Il applique :
+
+- `base` sur tous les noeuds ;
+- `nginx` sur `webservers` ;
+- `app` sur `appservers`.
+
+### Première exécution
+
+La première exécution a correctement appliqué les changements attendus :
+
+- installation des paquets ;
+- installation de Nginx ;
+- déploiement des fichiers de configuration ;
+- exécution du handler Nginx ;
+- création des fichiers applicatifs sur le serveur d'application.
+
+### Deuxième exécution
+
+La seconde exécution a permis de démontrer l'idempotence :
+
+- `ansible-node1` : `changed=0`
+- `ansible-node2` : `changed=0`
+
+Ce résultat confirme que le playbook n'applique plus de modifications inutiles une fois la configuration souhaitée atteinte.
+
+## Difficultés rencontrées
+
+Plusieurs difficultés pratiques ont été rencontrées :
+
+- les conteneurs Ubuntu minimaux ne contenaient pas Python ;
+- Ansible cherchait à utiliser des répertoires temporaires non accessibles dans le contexte d'exécution local ;
+- l'initialisation des deux conteneurs n'a pas été parfaitement synchrone, ce qui a nécessité une attente supplémentaire avant validation complète.
+
+## Solutions apportées
+
+Les solutions suivantes ont été mises en place :
+
+- ajout de l'installation automatique de `python3` et `sudo` dans les conteneurs ;
+- création d'un `ansible.cfg` local utilisant `/tmp` pour les fichiers temporaires ;
+- validation de la connectivité seulement après installation effective des prérequis dans les conteneurs.
+
+## Nettoyage
+
+Une fois la validation terminée, l'environnement de test a été nettoyé avec :
+
+```bash
+docker compose down
+```
+
+Résultat :
+
+- suppression des conteneurs `ansible-node1` et `ansible-node2` ;
+- suppression du réseau `ansible-net`.
+
+## Conclusion
+
+L'étape `05-ansible-playbook.md` peut être considérée comme terminée. L'infrastructure de test, l'inventaire, les playbooks, les roles et la démonstration d'idempotence ont été validés avec succès dans un environnement Docker local.
