@@ -52,6 +52,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Setup DevOps tools
+        uses: ./.github/actions/setup-tools
+        with:
+          install-terraform: "true"
+          terraform-version: "1.7.0"
+
       - name: Install Trivy
         run: |
           sudo apt-get update
