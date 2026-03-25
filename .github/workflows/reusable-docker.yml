@@ -22,10 +22,10 @@ on:
     outputs:
       image-tag:
         description: "Tag de l'image construite"
-        value: ${{ jobs.build.outputs.tag }}
+        value: ${{ jobs.docker-build.outputs.tag }}
 
 jobs:
-  build:
+  docker-build:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tags }}
