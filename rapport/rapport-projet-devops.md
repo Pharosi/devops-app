@@ -376,3 +376,146 @@ Les solutions suivantes ont été mises en place :
 ## Conclusion
 
 L'étape `02-github-actions.md` peut être considérée comme terminée. Le projet dispose désormais d'un workflow Docker réutilisable, d'une action composite locale, d'environnements GitHub correctement configurés et d'une pipeline avancée validée sur `develop` et `main`.
+
+# Terraform — Fondamentaux
+
+## Contexte
+
+Cette partie du rapport présente le travail réalisé à partir du document `03-terraform-init.md`. L'objectif était de créer une première infrastructure locale avec Terraform, comprendre le cycle `init -> plan -> apply -> destroy` et manipuler le state généré par Terraform.
+
+## Travaux réalisés
+
+Les éléments suivants ont été mis en place :
+
+- création du dossier `infra/terraform` ;
+- création du fichier `main.tf` ;
+- création du fichier `variables.tf` ;
+- création des fichiers `dev.tfvars` et `prod.tfvars` ;
+- initialisation de Terraform ;
+- exécution du plan ;
+- application de l'infrastructure en environnement `dev` ;
+- vérification du conteneur et de l'URL exposée ;
+- consultation du state Terraform ;
+- destruction complète des ressources créées.
+
+## Configuration Terraform créée
+
+La configuration a été construite en suivant le code proposé dans le document.
+
+Les ressources principales définies sont :
+
+- un provider Docker local ;
+- un réseau Docker nommé `devops-network` ;
+- une image Docker `nginx:alpine` ;
+- un conteneur Docker nommé dynamiquement selon l'environnement ;
+- des outputs pour l'URL d'accès et l'identifiant du conteneur.
+
+Des variables ont également été introduites pour :
+
+- le nom de l'application ;
+- le port web exposé ;
+- l'environnement (`dev`, `staging`, `prod`).
+
+Deux fichiers de variables ont été créés :
+
+- `dev.tfvars`
+- `prod.tfvars`
+
+## Difficultés rencontrées
+
+Deux difficultés principales sont apparues pendant cette étape :
+
+- la version initiale de Terraform installée sur la machine était `1.5.7`, alors que le document exigeait `>= 1.6` ;
+- l'initialisation Terraform a ensuite été bloquée par l'impossibilité de télécharger le provider Docker sans accès réseau.
+
+## Solutions apportées
+
+Les solutions suivantes ont été appliquées :
+
+- mise à jour de Terraform vers une version compatible ;
+- relance de `terraform init` avec téléchargement correct du provider `kreuzwerker/docker` ;
+- reprise normale du cycle Terraform après résolution des blocages.
+
+## Validation du cycle Terraform
+
+### Initialisation
+
+La commande suivante a été exécutée avec succès :
+
+```bash
+terraform -chdir=infra/terraform init
+```
+
+Résultat :
+
+- installation du provider Docker ;
+- génération du fichier `.terraform.lock.hcl`.
+
+### Plan
+
+La commande suivante a été exécutée :
+
+```bash
+terraform -chdir=infra/terraform plan -var-file=dev.tfvars
+```
+
+Le plan a correctement annoncé la création de :
+
+- `docker_network.app_network`
+- `docker_image.nginx`
+- `docker_container.web`
+
+L'output attendu `web_url = http://localhost:8080` a également été affiché.
+
+### Apply
+
+La commande suivante a été exécutée :
+
+```bash
+terraform -chdir=infra/terraform apply -auto-approve -var-file=dev.tfvars
+```
+
+Résultat :
+
+- création du réseau Docker ;
+- récupération de l'image `nginx:alpine` ;
+- création du conteneur `devops-app-dev` ;
+- génération des outputs `web_url` et `container_id`.
+
+### Vérifications après apply
+
+Les validations suivantes ont été réalisées :
+
+```bash
+curl http://localhost:8080
+docker ps
+terraform -chdir=infra/terraform show
+terraform -chdir=infra/terraform state list
+```
+
+Résultats obtenus :
+
+- l'URL `http://localhost:8080` répond correctement ;
+- le conteneur `devops-app-dev` est bien lancé ;
+- le state contient les ressources attendues ;
+- la configuration Terraform correspond bien à l'infrastructure créée.
+
+### Destroy
+
+La commande suivante a été exécutée :
+
+```bash
+terraform -chdir=infra/terraform destroy -auto-approve -var-file=dev.tfvars
+```
+
+Résultat :
+
+- suppression du conteneur ;
+- suppression de l'image ;
+- suppression du réseau créé par Terraform.
+
+Une vérification finale avec `docker ps` et `docker network ls` a confirmé que les ressources créées pour cette étape avaient bien été nettoyées.
+
+## Conclusion
+
+L'étape `03-terraform-init.md` peut être considérée comme terminée. La configuration Terraform de base a été créée avec succès, le cycle complet `init -> plan -> apply -> destroy` a été validé, et le fonctionnement du provider Docker ainsi que la gestion du state ont été correctement vérifiés.
