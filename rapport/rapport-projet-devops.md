@@ -904,8 +904,6 @@ Résultats :
 - le conteneur optimisé s'exécute avec l'utilisateur `appuser` ;
 - l'historique des layers confirme une image plus propre et mieux structurée que l'image non optimisée.
 
-Le scan Trivy mentionné dans le document n'a pas été intégré à cette étape afin de respecter l'ordre pédagogique du cours, la partie DevSecOps étant traitée plus loin dans les consignes.
-
 ## Validation de la stack Docker Compose
 
 La stack suivante a été mise en place :
@@ -937,6 +935,22 @@ Résultats observés :
 - Nginx a correctement joué le rôle de reverse proxy ;
 - `curl http://localhost:80` a retourné un statut `200 OK` avec le JSON attendu ;
 - `curl http://localhost:80/health` a retourné un statut `200 OK`.
+
+## Difficultés rencontrées
+
+Plusieurs difficultés ont été rencontrées pendant cette étape :
+
+- le `Dockerfile.bad` original s'est révélé extrêmement lent à construire sur le réseau disponible ;
+- le `Dockerfile` optimisé fourni par le document supposait l'existence directe de `node_modules` dans le stage `deps`, ce qui ne fonctionnait pas tel quel avec le projet réel ;
+- la comparaison avant/après a nécessité plusieurs itérations afin de conserver au maximum le code du professeur tout en gardant des builds exploitables localement.
+
+## Solutions apportées
+
+Les solutions suivantes ont été mises en place :
+
+- le `Dockerfile.bad` a été conservé dans sa version d'origine afin de rester fidèle au document, et la build a été menée jusqu'au bout malgré sa lenteur ;
+- le `Dockerfile` optimisé a été adapté de manière minimale pour garantir la présence du répertoire `node_modules` dans le stage `deps`, sans modifier l'intention pédagogique du multi-stage ;
+- la validation de la stack Docker Compose a été effectuée une fois les images et la configuration stabilisées.
 
 ## Nettoyage
 
