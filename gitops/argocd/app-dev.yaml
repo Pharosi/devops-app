@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devops-app-dev
+  namespace: argocd
+spec:
+  project: devops-training
+  source:
+    repoURL: https://github.com/Pharosi/devops-app.git
+    targetRevision: 11-gitops-argocd
+    path: gitops/apps/devops-app/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devops-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

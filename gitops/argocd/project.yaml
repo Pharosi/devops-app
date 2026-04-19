@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: devops-training
+  namespace: argocd
+spec:
+  description: "Projet GitOps pour la formation DevOps"
+  sourceRepos:
+    - "https://github.com/Pharosi/devops-app.git"
+  destinations:
+    - namespace: devops-dev
+      server: https://kubernetes.default.svc
+    - namespace: devops-staging
+      server: https://kubernetes.default.svc
+    - namespace: devops-prod
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
