@@ -15,6 +15,7 @@ Ce document présente une synthèse courte du travail déjà réalisé dans le p
 - `06-docker-avance.md`
 - `07-kubernetes-deploy.md`
 - `08-helm-charts.md`
+- `09-prometheus-grafana.md`
 
 ## Étapes réalisées jusqu'à présent
 
@@ -28,6 +29,7 @@ Jusqu'ici, le travail réalisé peut être résumé de la manière suivante :
 - optimisation Docker avancée avec comparaison d'images et validation d'une stack complète avec Docker Compose ;
 - premiers déploiements Kubernetes sur Minikube avec PostgreSQL et application ;
 - création d'un chart Helm simple et découverte de Kustomize.
+- mise en place d'une stack de monitoring locale avec Prometheus, Grafana et AlertManager.
 
 ## Choix des outils
 
@@ -163,6 +165,24 @@ Une première étape Helm a ensuite été réalisée pour transformer le déploi
 - installation, upgrade, rollback et historique de release ;
 - mise en place d'une structure Kustomize simple avec `base`, `dev` et `prod`.
 
+## Monitoring
+
+La partie monitoring a ensuite été mise en place avec une stack locale composée de :
+
+- Prometheus ;
+- Grafana ;
+- AlertManager ;
+- node-exporter ;
+- un service `webhook-mock`.
+
+Les validations principales ont été les suivantes :
+
+- targets Prometheus en état `UP` ;
+- dashboard Grafana provisionné automatiquement ;
+- règles d'alertes chargées ;
+- déclenchement réel de l'alerte `AppDown` ;
+- réception des webhooks `firing` puis `resolved` dans `webhook-mock`.
+
 ## Difficultés principales rencontrées
 
 Les principales difficultés rencontrées jusqu'à présent ont été les suivantes :
@@ -175,6 +195,7 @@ Les principales difficultés rencontrées jusqu'à présent ont été les suivan
 - configuration Ansible sur des conteneurs minimaux ne disposant pas immédiatement des prérequis nécessaires ;
 - nécessité de relancer et revérifier le cluster Minikube avant de commencer la partie Kubernetes ;
 - simplification du chart généré automatiquement par Helm pour garder une structure plus lisible.
+- nécessité de valider la chaîne complète d'alerte avec une panne contrôlée de l'application pour confirmer les webhooks.
 
 ## Solutions apportées
 
@@ -187,6 +208,7 @@ Les solutions mises en place ont permis de garder le projet cohérent avec les c
 - validation systématique par tests locaux, builds Docker, exécutions Terraform, Ansible et GitHub Actions ;
 - validation progressive de Kubernetes avec des manifestes simples, proches du document, avant d'ajouter des éléments plus avancés ;
 - simplification volontaire des fichiers Helm pour garder un niveau compréhensible et proche d'une première prise en main ;
+- mise en place d'un `webhook-mock` local pour vérifier clairement les notifications AlertManager ;
 - maintien d'une documentation détaillée pour justifier les choix techniques et les ajustements effectués.
 
 ## Autres éléments pertinents
@@ -198,8 +220,9 @@ En complément, les points suivants ont également été réalisés :
 - mise en place d'une base Ansible avec inventaire, playbooks, roles et démonstration d'idempotence ;
 - premiers manifestes Kubernetes fonctionnels dans le dossier `k8s/` ;
 - ajout d'un chart Helm et d'une structure Kustomize dans le projet ;
+- ajout d'une stack de monitoring dans le dossier `monitoring/` ;
 - rédaction d'une documentation détaillée pour suivre chaque étape du projet.
 
 ## Conclusion
 
-À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible, Kubernetes, Helm et Kustomize. La suite du travail pourra s'appuyer sur cette base pour poursuivre les étapes suivantes, notamment le monitoring, la sécurité avancée et GitOps.
+À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible, Kubernetes, Helm, Kustomize et monitoring. La suite du travail pourra s'appuyer sur cette base pour poursuivre les étapes suivantes, notamment la sécurité avancée et GitOps.

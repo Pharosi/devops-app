@@ -1223,3 +1223,154 @@ Les solutions suivantes ont été mises en place :
 ## Conclusion
 
 L'étape `08-helm-charts.md` peut être considérée comme validée. Un chart Helm simple et fonctionnel a été créé, les valeurs `dev` et `prod` ont été testées, le cycle `install -> upgrade -> rollback` a été validé et une alternative Kustomize a également été mise en place.
+
+# 09 - Prometheus & Grafana
+
+## Objectif
+
+L'objectif de cette étape était de mettre en place une stack de monitoring locale avec Prometheus pour la collecte de métriques, Grafana pour la visualisation et AlertManager pour la gestion des alertes.
+
+## Mise en place réalisée
+
+Les éléments suivants ont été créés :
+
+- `monitoring/docker-compose.yml`
+- `monitoring/prometheus/prometheus.yml`
+- `monitoring/prometheus/alerts.yml`
+- `monitoring/alertmanager/alertmanager.yml`
+- `monitoring/grafana/provisioning/datasources/prometheus.yml`
+- `monitoring/grafana/provisioning/dashboards/default.yml`
+- `monitoring/grafana/dashboards/app-overview.json`
+- `monitoring/.env.example`
+
+La stack mise en place contient les services suivants :
+
+- `prometheus`
+- `grafana`
+- `alertmanager`
+- `node-exporter`
+- `webhook-mock`
+- `app`
+
+Le choix a été fait de garder une structure simple et proche du document du professeur, avec des fichiers lisibles et peu de personnalisation inutile.
+
+## Configuration Prometheus
+
+Prometheus a été configuré pour scraper :
+
+- lui-même sur `localhost:9090`
+- `node-exporter` sur `node-exporter:9100`
+- l'application sur `app:3000/metrics`
+
+Le fichier `alerts.yml` contient bien les 5 règles d'alertes demandées :
+
+- `AppDown`
+- `HighLatency`
+- `HighErrorRate`
+- `HighCPU`
+- `DiskAlmostFull`
+
+## Configuration Grafana
+
+Grafana a été provisionné automatiquement avec :
+
+- une datasource Prometheus ;
+- un dashboard `DevOps App Overview`.
+
+Le dashboard défini dans `app-overview.json` permet de visualiser :
+
+- le taux de requêtes ;
+- la latence P95 ;
+- le taux d'erreur ;
+- le nombre d'instances actives.
+
+## Configuration AlertManager
+
+AlertManager a été configuré avec :
+
+- un receiver par défaut ;
+- un receiver dédié aux alertes `critical` ;
+- un envoi des webhooks vers `http://webhook-mock:5001/webhook`.
+
+Le service `webhook-mock` a été utilisé pour vérifier localement que les notifications étaient bien envoyées.
+
+## Validation réalisée
+
+Les validations suivantes ont été effectuées :
+
+```bash
+cd monitoring
+docker compose up -d
+docker compose ps
+curl http://localhost:9090/api/v1/targets
+curl http://localhost:3001/login
+curl http://localhost:9093
+curl http://localhost:3000/health
+curl http://localhost:9090/api/v1/rules
+curl http://localhost:9090/api/v1/alerts
+docker compose logs webhook-mock
+```
+
+Résultats observés :
+
+- tous les services de la stack ont démarré correctement ;
+- les targets Prometheus étaient bien en état `UP` ;
+- Grafana était accessible sur `http://localhost:3001` ;
+- AlertManager était accessible sur `http://localhost:9093` ;
+- l'application monitorée répondait correctement sur `/health`.
+
+## Vérification des alertes
+
+Pour valider concrètement la chaîne d'alerte, l'application a été arrêtée temporairement avec :
+
+```bash
+docker compose stop app
+```
+
+Après le délai prévu par la règle `AppDown`, les vérifications suivantes ont été observées :
+
+- Prometheus indiquait l'alerte `AppDown` en état `firing` ;
+- `webhook-mock` recevait bien un `POST /webhook` avec l'alerte critique ;
+- après redémarrage de l'application, l'alerte passait ensuite en `resolved` ;
+- `webhook-mock` recevait également le webhook de résolution.
+
+Cette vérification permet de confirmer que l'intégration Prometheus -> AlertManager -> webhook fonctionne correctement.
+
+## Requêtes PromQL utilisées
+
+Plusieurs requêtes PromQL du document ont été reprises pour cette étape, notamment :
+
+```promql
+rate(http_requests_total[5m])
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100
+```
+
+Ces requêtes permettent de suivre respectivement :
+
+- le taux de requêtes ;
+- la latence ;
+- le taux d'erreur.
+
+## Difficultés rencontrées
+
+Les principales difficultés rencontrées pendant cette étape ont été les suivantes :
+
+- il fallait garder une stack de monitoring simple sans rendre la structure trop avancée ;
+- la validation de l'alerte `AppDown` demandait d'attendre réellement le temps défini dans la règle ;
+- il fallait vérifier non seulement le déclenchement de l'alerte, mais aussi la réception du webhook par le service mock ;
+- il fallait ensuite confirmer que l'alerte repassait correctement en `resolved`.
+
+## Solutions apportées
+
+Les solutions suivantes ont été retenues :
+
+- conservation d'une configuration proche du document du professeur ;
+- ajout d'un service `webhook-mock` très simple pour visualiser clairement les notifications ;
+- validation progressive de chaque composant avant de tester l'alerte complète ;
+- arrêt temporaire du service `app` pour provoquer un cas réel d'indisponibilité ;
+- redémarrage du service pour vérifier aussi la résolution de l'alerte.
+
+## Conclusion
+
+L'étape `09-prometheus-grafana.md` peut être considérée comme validée. La stack Prometheus + Grafana + AlertManager fonctionne localement, les règles d'alertes sont chargées, le dashboard Grafana est provisionné et l'envoi des webhooks vers `webhook-mock` a été vérifié en situation réelle.
