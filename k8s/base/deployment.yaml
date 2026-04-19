@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: devops-app
+  template:
+    metadata:
+      labels:
+        app: devops-app
+    spec:
+      containers:
+        - name: app
+          image: devops-app:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: APP_PORT
+              value: "3000"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20

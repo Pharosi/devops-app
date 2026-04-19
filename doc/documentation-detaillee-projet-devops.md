@@ -1095,3 +1095,131 @@ Les solutions suivantes ont été mises en place :
 ## Conclusion
 
 L'étape `07-kubernetes-deploy.md` peut être considérée comme validée dans sa partie principale. Le namespace, la ConfigMap, le Secret, le déploiement PostgreSQL, le déploiement applicatif, l'exposition du service, le scaling, le rolling update et le rollback ont été testés avec succès sur Minikube.
+
+# Helm & Kustomize
+
+## Contexte
+
+Cette partie du rapport présente le travail réalisé à partir du document `08-helm-charts.md`. L'objectif était de transformer le déploiement Kubernetes précédent en chart Helm simple, puis de découvrir Kustomize comme alternative plus légère.
+
+## Travaux réalisés
+
+Les éléments suivants ont été mis en place :
+
+- création d'un chart Helm `devops-app-chart` ;
+- simplification de la structure générée par `helm create` pour garder un niveau débutant et lisible ;
+- personnalisation de `Chart.yaml` et `values.yaml` ;
+- ajout de `values-dev.yaml` et `values-prod.yaml` ;
+- ajout de templates Helm simples pour l'application, PostgreSQL, la ConfigMap, le Secret, le Service, l'Ingress et le HPA ;
+- création d'une structure Kustomize `base` / `overlays`.
+
+## Chart Helm
+
+Le chart Helm créé contient les éléments principaux suivants :
+
+- `Chart.yaml`
+- `values.yaml`
+- `values-dev.yaml`
+- `values-prod.yaml`
+- `templates/configmap.yaml`
+- `templates/secret.yaml`
+- `templates/postgres-pvc.yaml`
+- `templates/postgres-deployment.yaml`
+- `templates/postgres-service.yaml`
+- `templates/deployment.yaml`
+- `templates/service.yaml`
+- `templates/ingress.yaml`
+- `templates/hpa.yaml`
+
+Le choix a été fait de garder un chart simple, sans surcharger la structure avec des templates supplémentaires peu utiles pour cette étape.
+
+## Values par environnement
+
+Deux fichiers de valeurs ont été ajoutés :
+
+- `values-dev.yaml`
+- `values-prod.yaml`
+
+Le fichier `values-dev.yaml` conserve une configuration légère, avec une seule réplique et des ressources réduites.
+
+Le fichier `values-prod.yaml` applique une configuration plus ambitieuse :
+
+- plus de ressources ;
+- davantage de réplicas ;
+- activation de l'autoscaling.
+
+## Validation Helm
+
+Les validations suivantes ont été effectuées :
+
+```bash
+helm lint devops-app-chart
+helm template devops-app devops-app-chart -f devops-app-chart/values-dev.yaml --set secret.dbPassword=secret123
+helm install devops-app devops-app-chart -f devops-app-chart/values-dev.yaml -n devops-training --set secret.dbPassword=secret123
+helm list -n devops-training
+helm upgrade devops-app devops-app-chart -f devops-app-chart/values-prod.yaml -n devops-training --set secret.dbPassword=secret123
+helm rollback devops-app 1 -n devops-training
+helm history devops-app -n devops-training
+```
+
+Résultats observés :
+
+- `helm lint` a été validé ;
+- le rendu YAML avec `helm template` a été généré correctement ;
+- l'installation du chart dans le namespace `devops-training` a réussi ;
+- l'upgrade a créé une nouvelle révision ;
+- le rollback a été exécuté avec succès ;
+- l'historique de la release a bien montré les révisions successives.
+
+## Kustomize
+
+La structure suivante a été ajoutée :
+
+- `k8s/base`
+- `k8s/overlays/dev`
+- `k8s/overlays/prod`
+
+Le but est de garder une alternative simple à Helm pour montrer une autre manière de gérer des variantes d'environnement.
+
+La validation suivante a été faite :
+
+```bash
+kubectl kustomize k8s/overlays/dev
+kubectl apply -k k8s/overlays/dev
+```
+
+Résultats observés :
+
+- le rendu Kustomize du dossier `dev` est correct ;
+- l'overlay `dev` a pu être appliqué au cluster.
+
+## Comparaison Helm vs Kustomize
+
+Le travail réalisé permet de comparer les deux approches :
+
+- **Helm** est plus adapté lorsqu'il faut gérer des variables, des releases, des upgrades et des rollbacks ;
+- **Kustomize** est plus simple pour modifier quelques ressources YAML existantes avec des overlays.
+
+Dans ce projet, Helm apparaît comme la solution la plus complète pour la suite, tandis que Kustomize reste une bonne alternative légère pour des cas simples.
+
+## Difficultés rencontrées
+
+Plusieurs difficultés ont été rencontrées pendant cette étape :
+
+- le chart généré automatiquement par `helm create` contenait plusieurs fichiers inutiles ou trop avancés pour cette étape ;
+- certains noms de ressources pouvaient entrer en conflit avec ceux déjà créés dans l'étape `07` ;
+- le template de test généré par défaut faisait référence aux anciens helpers du chart ;
+- l'autoscaling activé dans la version `prod` reste dépendant du contexte du cluster et des métriques disponibles.
+
+## Solutions apportées
+
+Les solutions suivantes ont été mises en place :
+
+- simplification du chart pour garder uniquement les fichiers réellement utiles ;
+- renommage de certaines ressources Helm pour éviter les conflits avec les manifestes Kubernetes déjà présents ;
+- suppression du test généré automatiquement qui n'était plus cohérent après simplification ;
+- validation progressive avec `helm lint`, `helm template`, `helm install`, `helm upgrade`, `helm rollback` et `helm history`.
+
+## Conclusion
+
+L'étape `08-helm-charts.md` peut être considérée comme validée. Un chart Helm simple et fonctionnel a été créé, les valeurs `dev` et `prod` ont été testées, le cycle `install -> upgrade -> rollback` a été validé et une alternative Kustomize a également été mise en place.
