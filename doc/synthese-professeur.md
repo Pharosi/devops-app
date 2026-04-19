@@ -13,6 +13,7 @@ Ce document présente une synthèse courte du travail déjà réalisé dans le p
 - `04-terraform-modules.md`
 - `05-ansible-playbook.md`
 - `06-docker-avance.md`
+- `07-kubernetes-deploy.md`
 
 ## Étapes réalisées jusqu'à présent
 
@@ -24,6 +25,7 @@ Jusqu'ici, le travail réalisé peut être résumé de la manière suivante :
 - premiers travaux avec Terraform, puis refactorisation modulaire ;
 - mise en place d'une base Ansible avec playbooks, roles et validation de l'idempotence ;
 - optimisation Docker avancée avec comparaison d'images et validation d'une stack complète avec Docker Compose.
+- premiers déploiements Kubernetes sur Minikube avec PostgreSQL et application.
 
 ## Choix des outils
 
@@ -137,6 +139,18 @@ Une stack Docker Compose complète a également été validée avec :
 - Redis ;
 - Nginx comme reverse proxy.
 
+## Kubernetes
+
+La partie Kubernetes a commencé avec un déploiement simple sur Minikube. Les éléments suivants ont été validés :
+
+- un namespace dédié ;
+- une ConfigMap et un Secret ;
+- un déploiement PostgreSQL avec PVC ;
+- un déploiement applicatif avec plusieurs replicas ;
+- un service `ClusterIP` ;
+- un accès de test via `port-forward` ;
+- une démonstration de scaling, rolling update et rollback.
+
 ## Difficultés principales rencontrées
 
 Les principales difficultés rencontrées jusqu'à présent ont été les suivantes :
@@ -146,7 +160,8 @@ Les principales difficultés rencontrées jusqu'à présent ont été les suivan
 - ajustement de certains workflows GitHub Actions pour corriger des références d'actions non résolues ;
 - nécessité d'adapter légèrement certains exemples du cours pour qu'ils fonctionnent avec la structure réelle du projet ;
 - lenteur importante du build de l'image Docker non optimisée ;
-- configuration Ansible sur des conteneurs minimaux ne disposant pas immédiatement des prérequis nécessaires.
+- configuration Ansible sur des conteneurs minimaux ne disposant pas immédiatement des prérequis nécessaires ;
+- nécessité de relancer et revérifier le cluster Minikube avant de commencer la partie Kubernetes.
 
 ## Solutions apportées
 
@@ -157,6 +172,7 @@ Les solutions mises en place ont permis de garder le projet cohérent avec les c
 - correction et mise à jour des workflows GitHub Actions ;
 - conservation du code du professeur autant que possible, avec uniquement des adaptations minimales lorsque cela était nécessaire pour exécuter le projet ;
 - validation systématique par tests locaux, builds Docker, exécutions Terraform, Ansible et GitHub Actions ;
+- validation progressive de Kubernetes avec des manifestes simples, proches du document, avant d'ajouter des éléments plus avancés ;
 - maintien d'une documentation détaillée pour justifier les choix techniques et les ajustements effectués.
 
 ## Autres éléments pertinents
@@ -166,8 +182,9 @@ En complément, les points suivants ont également été réalisés :
 - préparation complète de l'environnement local ;
 - validation du cluster Minikube ;
 - mise en place d'une base Ansible avec inventaire, playbooks, roles et démonstration d'idempotence ;
+- premiers manifestes Kubernetes fonctionnels dans le dossier `k8s/` ;
 - rédaction d'une documentation détaillée pour suivre chaque étape du projet.
 
 ## Conclusion
 
-À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform et Ansible. La suite du travail pourra s'appuyer sur cette base pour poursuivre les étapes suivantes, notamment Kubernetes, Helm, monitoring, sécurité avancée et GitOps.
+À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible et les premiers déploiements Kubernetes. La suite du travail pourra s'appuyer sur cette base pour poursuivre les étapes suivantes, notamment Helm, monitoring, sécurité avancée et GitOps.

@@ -969,3 +969,129 @@ Résultat :
 ## Conclusion
 
 L'étape `06-docker-avance.md` peut être considérée comme terminée. La comparaison entre une image non optimisée et une image multi-stage a été validée, l'exécution non-root a été confirmée, et la stack complète avec Docker Compose, PostgreSQL, Redis et Nginx a été testée avec succès.
+
+# Kubernetes — Déployer une application
+
+## Contexte
+
+Cette partie du rapport présente le travail réalisé à partir du document `07-kubernetes-deploy.md`. L'objectif était de déployer une application multi-tiers sur Kubernetes avec des manifestes YAML simples, en utilisant un namespace dédié, une ConfigMap, un Secret, un déploiement PostgreSQL et un déploiement applicatif.
+
+## Travaux réalisés
+
+Les éléments suivants ont été mis en place :
+
+- création du namespace `devops-training` ;
+- création du fichier `k8s/configmap.yaml` ;
+- création du Secret `app-secrets` en ligne de commande ;
+- création du fichier `k8s/postgres.yaml` avec PVC, Deployment et Service ;
+- création du fichier `k8s/app.yaml` avec Deployment et Service ;
+- chargement des images locales dans Minikube ;
+- validation du déploiement de l'application ;
+- démonstration du scaling, du rolling update et du rollback.
+
+## Namespace, ConfigMap et Secret
+
+Le namespace dédié a été créé avec :
+
+```bash
+kubectl create namespace devops-training
+kubectl config set-context --current --namespace=devops-training
+```
+
+La ConfigMap a été définie dans `k8s/configmap.yaml` pour regrouper les variables de configuration principales de l'application.
+
+Le Secret a été créé en ligne de commande, conformément au document, afin d'éviter de committer les identifiants dans un fichier YAML :
+
+```bash
+kubectl create secret generic app-secrets \
+  --namespace=devops-training \
+  --from-literal=DB_USER=appuser \
+  --from-literal=DB_PASSWORD=supersecret123
+```
+
+## Déploiement PostgreSQL
+
+Le fichier `k8s/postgres.yaml` contient :
+
+- un `PersistentVolumeClaim` ;
+- un `Deployment` PostgreSQL ;
+- un `Service` `ClusterIP`.
+
+Le pod PostgreSQL a été validé avec :
+
+- la montée du conteneur ;
+- le `readinessProbe` en état `Ready` ;
+- l'attachement correct du volume persistant.
+
+## Déploiement de l'application
+
+Le fichier `k8s/app.yaml` contient :
+
+- un `Deployment` `devops-app` avec `3` replicas ;
+- un `Service` `ClusterIP` `devops-app-svc` ;
+- les variables d'environnement injectées à partir de la ConfigMap et du Secret ;
+- une `readinessProbe` et une `livenessProbe` ;
+- des limites et réservations de ressources ;
+- une stratégie `RollingUpdate`.
+
+L'image locale `devops-app:1.0.0` a été chargée dans Minikube avant le déploiement.
+
+## Vérification du déploiement
+
+Les commandes suivantes ont été utilisées pour vérifier le déploiement :
+
+```bash
+kubectl get pods
+kubectl get svc
+kubectl logs -l app=devops-app --tail=50
+kubectl port-forward svc/devops-app-svc 8080:80
+curl http://localhost:8080
+```
+
+Résultats observés :
+
+- les pods PostgreSQL et application sont passés à l'état `Running` puis `Ready` ;
+- les services `postgres-svc` et `devops-app-svc` ont été créés correctement ;
+- les logs de l'application montrent le démarrage du serveur sur le port `3000` ;
+- l'accès via `port-forward` a retourné `200 OK` avec la réponse attendue.
+
+## Scaling et rolling update
+
+La partie finale du document a également été testée :
+
+```bash
+kubectl scale deployment devops-app --replicas=5
+kubectl set image deployment/devops-app app=devops-app:1.0.1
+kubectl rollout status deployment/devops-app
+kubectl rollout undo deployment/devops-app
+kubectl rollout history deployment/devops-app
+```
+
+Résultats observés :
+
+- le déploiement a bien été scalé à `5` replicas ;
+- le rolling update vers l'image `devops-app:1.0.1` a été lancé puis validé ;
+- le rollback a été exécuté avec succès ;
+- l'historique du déploiement a bien affiché plusieurs révisions.
+
+## Difficultés rencontrées
+
+Plusieurs difficultés ont été rencontrées pendant cette étape :
+
+- Minikube était arrêté au début, il a donc fallu relancer le cluster avant tout déploiement ;
+- le contexte Kubernetes était revenu sur le namespace `default` ;
+- la partie `Ingress` n'a pas été activée, car elle reste optionnelle et dépend de la présence d'un ingress controller déjà installé ;
+- les pods ont nécessité quelques secondes supplémentaires pour passer complètement à l'état `Ready` après l'application des manifestes et après le rollback.
+
+## Solutions apportées
+
+Les solutions suivantes ont été mises en place :
+
+- redémarrage de Minikube puis vérification de `kubectl` avant de créer les manifestes ;
+- application des fichiers dans un ordre simple et proche du document ;
+- utilisation de `port-forward` pour tester rapidement l'application sans ajouter d'Ingress inutile à ce stade ;
+- validation complète du cycle `deploy -> scale -> update -> rollback` pour s'assurer que le déploiement reste fonctionnel.
+
+## Conclusion
+
+L'étape `07-kubernetes-deploy.md` peut être considérée comme validée dans sa partie principale. Le namespace, la ConfigMap, le Secret, le déploiement PostgreSQL, le déploiement applicatif, l'exposition du service, le scaling, le rolling update et le rollback ont été testés avec succès sur Minikube.
