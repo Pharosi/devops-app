@@ -1499,3 +1499,140 @@ Les solutions suivantes ont été retenues :
 ## Conclusion
 
 L'étape `10-devsecops-scan.md` peut être considérée comme validée. Le pipeline intègre désormais Trivy, Gitleaks et des contrôles OPA / Conftest, une checklist sécurité a été ajoutée et les vérifications principales ont été testées localement avec succès.
+
+# 11 - GitOps avec ArgoCD
+
+## Objectif
+
+L'objectif de cette étape était de mettre en place une logique GitOps avec ArgoCD, c'est-à-dire utiliser Git comme source de vérité pour le déploiement Kubernetes.
+
+## Choix retenu pour le projet
+
+Le document propose soit un dépôt GitOps séparé, soit un dossier `gitops/` dans le projet. Le choix retenu a été de créer un dossier `gitops/` directement dans ce dépôt afin de garder une structure simple et facile à suivre.
+
+L'image applicative utilisée pour la démonstration est `devops-app:1.0.1`. Dans ce contexte de formation sur Minikube, l'image a été chargée localement dans le cluster avec `minikube image load`, ce qui a permis de valider le workflow sans dépendre d'une registry externe.
+
+## Structure GitOps mise en place
+
+La structure suivante a été ajoutée :
+
+- `gitops/apps/devops-app/base`
+- `gitops/apps/devops-app/overlays/dev`
+- `gitops/apps/devops-app/overlays/staging`
+- `gitops/apps/devops-app/overlays/prod`
+- `gitops/argocd/project.yaml`
+- `gitops/argocd/app-dev.yaml`
+- `gitops/argocd/app-staging.yaml`
+- `gitops/argocd/app-prod.yaml`
+
+Le dossier `base` contient :
+
+- un `Deployment` simple ;
+- un `Service` ;
+- un `kustomization.yaml`.
+
+Chaque overlay permet de faire varier :
+
+- le namespace ;
+- le préfixe de nom ;
+- le nombre de replicas.
+
+## Installation ArgoCD
+
+ArgoCD a été installé dans le cluster Minikube avec les étapes suivantes :
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=240s
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+kubectl port-forward svc/argocd-server -n argocd 8443:443
+argocd login localhost:8443 --insecure --username admin --password <password>
+```
+
+ArgoCD a bien été rendu accessible localement et le login CLI a été validé.
+
+## Projet et application ArgoCD
+
+Un `AppProject` a été créé avec le nom :
+
+- `devops-training`
+
+Puis une application ArgoCD `devops-app-dev` a été créée pour l'overlay `dev`.
+
+Les paramètres principaux sont :
+
+- `repoURL` : `https://github.com/Pharosi/devops-app.git`
+- `path` : `gitops/apps/devops-app/overlays/dev`
+- `syncPolicy.automated`
+- `CreateNamespace=true`
+
+## Validation réalisée
+
+Les validations suivantes ont été effectuées :
+
+```bash
+kubectl kustomize gitops/apps/devops-app/overlays/dev
+kubectl kustomize gitops/apps/devops-app/overlays/staging
+kubectl kustomize gitops/apps/devops-app/overlays/prod
+minikube image load devops-app:1.0.1
+kubectl apply -f gitops/argocd/project.yaml
+kubectl apply -f gitops/argocd/app-dev.yaml
+argocd app list --server localhost:8443 --insecure
+argocd app get devops-app-dev --server localhost:8443 --insecure
+argocd app history devops-app-dev --server localhost:8443 --insecure
+kubectl get deployment dev-devops-app -n devops-dev
+```
+
+Résultats observés :
+
+- les trois overlays Kustomize ont été rendus correctement ;
+- l'image `devops-app:1.0.1` a été chargée dans Minikube ;
+- l'application `devops-app-dev` a été créée avec succès ;
+- ArgoCD affichait l'application en état `Synced` et `Healthy` ;
+- le deployment `dev-devops-app` a bien été créé dans le namespace `devops-dev`.
+
+## Démonstration GitOps
+
+Pour démontrer le fonctionnement GitOps, une modification a été faite dans le dépôt sur :
+
+- `gitops/apps/devops-app/overlays/dev/replicas-patch.yaml`
+
+La valeur est passée de :
+
+- `replicas: 1`
+
+à :
+
+- `replicas: 2`
+
+Après push du commit sur la branche suivie par ArgoCD, les constats suivants ont été observés :
+
+- l'application est d'abord passée en `OutOfSync` ;
+- ArgoCD a ensuite resynchronisé automatiquement l'application ;
+- l'historique ArgoCD montrait une nouvelle révision ;
+- le deployment Kubernetes est bien passé à `2` replicas prêts.
+
+Cette partie valide concrètement le principe GitOps : modification du dépôt -> détection du changement -> synchronisation du cluster.
+
+## Difficultés rencontrées
+
+Les principales difficultés rencontrées pendant cette étape ont été les suivantes :
+
+- l'installation initiale d'ArgoCD via `kubectl apply` a remonté une erreur sur la taille d'une annotation CRD ;
+- il fallait garder une structure GitOps simple, sans introduire trop d'éléments avancés ;
+- le document suppose une image disponible dans une registry, alors que la validation locale a été faite sur Minikube ;
+- le polling automatique d'ArgoCD peut prendre un peu de temps avant de détecter un nouveau commit.
+
+## Solutions apportées
+
+Les solutions suivantes ont été retenues :
+
+- reprise de l'installation avec `kubectl apply --server-side` pour contourner le problème du CRD ;
+- choix d'une structure `gitops/` intégrée au dépôt plutôt qu'un second repository séparé ;
+- chargement local de l'image dans Minikube avec `minikube image load` ;
+- utilisation d'un refresh ArgoCD pour accélérer la détection du nouveau commit pendant la démonstration, tout en laissant la synchronisation en mode automatique.
+
+## Conclusion
+
+L'étape `11-gitops-argocd.md` peut être considérée comme validée. ArgoCD a été installé dans Minikube, une structure GitOps simple a été créée dans le dépôt, une application `dev` a été synchronisée avec succès et une modification du dépôt a bien provoqué une mise à jour automatique du déploiement.

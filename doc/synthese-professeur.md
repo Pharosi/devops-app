@@ -17,6 +17,7 @@ Ce document présente une synthèse courte du travail déjà réalisé dans le p
 - `08-helm-charts.md`
 - `09-prometheus-grafana.md`
 - `10-devsecops-scan.md`
+- `11-gitops-argocd.md`
 
 ## Étapes réalisées jusqu'à présent
 
@@ -32,6 +33,7 @@ Jusqu'ici, le travail réalisé peut être résumé de la manière suivante :
 - création d'un chart Helm simple et découverte de Kustomize.
 - mise en place d'une stack de monitoring locale avec Prometheus, Grafana et AlertManager.
 - intégration d'une première couche DevSecOps avec Trivy, Gitleaks et des politiques OPA.
+- mise en place d'une première logique GitOps avec ArgoCD.
 
 ## Choix des outils
 
@@ -47,6 +49,7 @@ Les outils suivants ont été retenus pour rester cohérents avec les consignes 
 - **Trivy** pour le scan de sécurité des images, dépendances et fichiers IaC ;
 - **Gitleaks** pour la détection de secrets ;
 - **OPA / Conftest** pour des contrôles de conformité simples sur Dockerfile et Kubernetes.
+- **ArgoCD** pour la synchronisation GitOps du cluster Kubernetes.
 
 ## GitHub Actions et outils de vérification
 
@@ -205,6 +208,23 @@ Les validations locales ont confirmé :
 - aucune misconfiguration critique dans le Dockerfile et l'infrastructure Terraform ;
 - des politiques OPA valides sur le Dockerfile et les manifests Kubernetes.
 
+## GitOps avec ArgoCD
+
+Une première étape GitOps a été mise en place avec ArgoCD :
+
+- installation d'ArgoCD dans Minikube ;
+- création d'un dossier `gitops/` dans le projet ;
+- base Kustomize et overlays `dev`, `staging` et `prod` ;
+- création d'un `AppProject` et d'une `Application` ArgoCD ;
+- synchronisation automatique d'un environnement `dev`.
+
+La démonstration la plus importante a été la suivante :
+
+- modification du dépôt GitOps sur le nombre de replicas ;
+- passage temporaire de l'application ArgoCD en `OutOfSync` ;
+- synchronisation automatique ;
+- mise à jour effective du deployment Kubernetes.
+
 ## Difficultés principales rencontrées
 
 Les principales difficultés rencontrées jusqu'à présent ont été les suivantes :
@@ -219,6 +239,7 @@ Les principales difficultés rencontrées jusqu'à présent ont été les suivan
 - simplification du chart généré automatiquement par Helm pour garder une structure plus lisible.
 - nécessité de valider la chaîne complète d'alerte avec une panne contrôlée de l'application pour confirmer les webhooks.
 - présence de vulnérabilités `HIGH` remontées par Trivy dans la base Node de l'image Docker.
+- besoin d'adapter la démonstration GitOps à un cluster Minikube local sans registry publique dédiée.
 
 ## Solutions apportées
 
@@ -233,6 +254,7 @@ Les solutions mises en place ont permis de garder le projet cohérent avec les c
 - simplification volontaire des fichiers Helm pour garder un niveau compréhensible et proche d'une première prise en main ;
 - mise en place d'un `webhook-mock` local pour vérifier clairement les notifications AlertManager ;
 - choix d'un seuil bloquant sur les vulnérabilités `CRITICAL` pour l'image, tout en conservant le reporting `HIGH,CRITICAL` ;
+- utilisation de `minikube image load` pour rendre l'image disponible au cluster dans la partie GitOps ;
 - maintien d'une documentation détaillée pour justifier les choix techniques et les ajustements effectués.
 
 ## Autres éléments pertinents
@@ -247,8 +269,9 @@ En complément, les points suivants ont également été réalisés :
 - ajout d'une stack de monitoring dans le dossier `monitoring/` ;
 - ajout de politiques de sécurité dans le dossier `policies/` ;
 - ajout d'une checklist sécurité du projet ;
+- ajout d'une structure GitOps dans le dossier `gitops/` ;
 - rédaction d'une documentation détaillée pour suivre chaque étape du projet.
 
 ## Conclusion
 
-À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible, Kubernetes, Helm, Kustomize, monitoring et premiers contrôles DevSecOps. La suite du travail pourra s'appuyer sur cette base pour poursuivre les étapes suivantes, notamment GitOps.
+À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible, Kubernetes, Helm, Kustomize, monitoring, DevSecOps et GitOps. Le projet couvre maintenant l'ensemble des grandes étapes prévues dans les consignes.

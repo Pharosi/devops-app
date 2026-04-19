@@ -7,7 +7,7 @@ spec:
   project: devops-training
   source:
     repoURL: https://github.com/Pharosi/devops-app.git
-    targetRevision: 11-gitops-argocd
+    targetRevision: develop
     path: gitops/apps/devops-app/overlays/dev
   destination:
     server: https://kubernetes.default.svc
