@@ -1374,3 +1374,128 @@ Les solutions suivantes ont été retenues :
 ## Conclusion
 
 L'étape `09-prometheus-grafana.md` peut être considérée comme validée. La stack Prometheus + Grafana + AlertManager fonctionne localement, les règles d'alertes sont chargées, le dashboard Grafana est provisionné et l'envoi des webhooks vers `webhook-mock` a été vérifié en situation réelle.
+
+# 10 - DevSecOps - Scan & Conformité
+
+## Objectif
+
+L'objectif de cette étape était d'intégrer des vérifications de sécurité plus complètes dans le projet, à la fois dans le pipeline CI/CD et dans les fichiers du dépôt.
+
+## Éléments ajoutés
+
+Les éléments suivants ont été créés ou mis à jour :
+
+- mise à jour du job `security` dans `.github/workflows/ci.yml` ;
+- création de `policies/dockerfile.rego` ;
+- création de `policies/k8s.rego` ;
+- création de `SECURITY-CHECKLIST.md`.
+
+Le but a été de rester proche du document du professeur tout en gardant une mise en œuvre simple et lisible.
+
+## Intégration Trivy
+
+Le job `security` du pipeline a été enrichi avec plusieurs contrôles Trivy :
+
+- scan du filesystem de l'application ;
+- scan de configuration du Dockerfile ;
+- scan de configuration des fichiers IaC ;
+- build d'une image temporaire `devops-app:scan` ;
+- génération d'un rapport SARIF ;
+- scan de l'image Docker avec seuil bloquant sur les vulnérabilités `CRITICAL`.
+
+Le rapport SARIF est ensuite envoyé à GitHub et également conservé comme artefact.
+
+## Détection de secrets
+
+La détection de secrets a été ajoutée au pipeline avec `gitleaks/gitleaks-action@v2`.
+
+Une vérification locale a aussi été réalisée pour confirmer qu'aucun secret réel n'était présent dans le dépôt au moment du test.
+
+## Politiques OPA / Conftest
+
+Deux fichiers de politiques ont été ajoutés :
+
+- `policies/dockerfile.rego`
+- `policies/k8s.rego`
+
+Les règles mises en place permettent notamment de vérifier :
+
+- qu'un conteneur ne tourne pas en `root` ;
+- qu'un `USER` est bien défini dans le Dockerfile ;
+- qu'une image n'utilise pas `:latest` ;
+- qu'un `HEALTHCHECK` est présent ;
+- qu'un déploiement Kubernetes ne déclare pas de conteneur privilégié ;
+- que les deployments Kubernetes possèdent des `resource limits` ;
+- que les images Kubernetes ont bien un tag explicite.
+
+## Checklist sécurité
+
+Un fichier `SECURITY-CHECKLIST.md` a été ajouté pour récapituler l'état actuel du projet sur :
+
+- les images Docker ;
+- Kubernetes ;
+- le pipeline ;
+- l'infrastructure.
+
+Cette checklist a été remplie de manière honnête selon l'état réel du projet à cette étape.
+
+## Validation réalisée
+
+Les validations suivantes ont été effectuées localement :
+
+```bash
+docker build -t devops-app:scan app/
+docker run --rm -v "$PWD:/project" -w /project aquasec/trivy:latest fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format table app/
+docker run --rm -v "$PWD:/project" -w /project aquasec/trivy:latest config --severity HIGH,CRITICAL --exit-code 0 app/Dockerfile
+docker run --rm -v "$PWD:/project" -w /project aquasec/trivy:latest config --severity HIGH,CRITICAL --exit-code 0 infra/
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --scanners vuln --severity CRITICAL --exit-code 1 --format table devops-app:scan
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/project" -w /project aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --format sarif --output /project/trivy-results.sarif devops-app:scan
+docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --verbose
+docker run --rm -v "$PWD:/project" -w /project openpolicyagent/conftest test app/Dockerfile --policy policies --namespace dockerfile --parser dockerfile
+docker run --rm -v "$PWD:/project" -w /project openpolicyagent/conftest test k8s/app.yaml k8s/postgres.yaml --policy policies --namespace kubernetes
+```
+
+Résultats observés :
+
+- l'image `devops-app:scan` a été construite correctement ;
+- le scan Trivy du Dockerfile n'a remonté aucune misconfiguration `HIGH` ou `CRITICAL` ;
+- le scan Trivy de l'infrastructure Terraform n'a remonté aucune misconfiguration `HIGH` ou `CRITICAL` ;
+- le scan Trivy de l'image n'a remonté aucune vulnérabilité `CRITICAL` ;
+- un fichier SARIF a bien été généré ;
+- Gitleaks n'a détecté aucune fuite de secret ;
+- les politiques OPA / Conftest sont passées avec succès.
+
+## Point important sur le scan d'image
+
+Le scan détaillé de l'image Docker a tout de même remonté des vulnérabilités `HIGH` venant de composants inclus dans l'image Node de base, en particulier dans l'écosystème `npm`.
+
+Dans ce contexte, le choix retenu a été le suivant :
+
+- continuer à générer un rapport SARIF avec le niveau `HIGH,CRITICAL` ;
+- conserver une visibilité complète sur ces vulnérabilités ;
+- ne rendre le pipeline bloquant que sur les vulnérabilités `CRITICAL` pour l'image.
+
+Cette approche garde le pipeline utile et réaliste pour le projet, sans masquer les informations de sécurité importantes.
+
+## Difficultés rencontrées
+
+Les principales difficultés rencontrées pendant cette étape ont été les suivantes :
+
+- il fallait intégrer plusieurs outils de sécurité sans alourdir excessivement la structure du projet ;
+- certaines vulnérabilités `HIGH` provenaient de la base Node de l'image et non du code applicatif lui-même ;
+- le dépôt ne contient pas de dépendances externes Node.js, ce qui rend le scan filesystem moins démonstratif sur la partie dépendances ;
+- il fallait garder des politiques OPA simples, compréhensibles et adaptées au niveau du projet.
+
+## Solutions apportées
+
+Les solutions suivantes ont été retenues :
+
+- réutilisation du job `security` existant plutôt que création d'un pipeline parallèle ;
+- ajout d'une génération SARIF pour garder une trace exploitable dans GitHub ;
+- utilisation d'un seuil bloquant `CRITICAL` pour l'image, tout en conservant le reporting `HIGH,CRITICAL` ;
+- écriture de politiques Rego courtes et très proches des exemples du document ;
+- ajout d'une checklist sécurité simple pour visualiser ce qui est déjà couvert et ce qui reste à améliorer.
+
+## Conclusion
+
+L'étape `10-devsecops-scan.md` peut être considérée comme validée. Le pipeline intègre désormais Trivy, Gitleaks et des contrôles OPA / Conftest, une checklist sécurité a été ajoutée et les vérifications principales ont été testées localement avec succès.

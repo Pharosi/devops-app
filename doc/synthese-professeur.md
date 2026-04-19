@@ -16,6 +16,7 @@ Ce document présente une synthèse courte du travail déjà réalisé dans le p
 - `07-kubernetes-deploy.md`
 - `08-helm-charts.md`
 - `09-prometheus-grafana.md`
+- `10-devsecops-scan.md`
 
 ## Étapes réalisées jusqu'à présent
 
@@ -30,6 +31,7 @@ Jusqu'ici, le travail réalisé peut être résumé de la manière suivante :
 - premiers déploiements Kubernetes sur Minikube avec PostgreSQL et application ;
 - création d'un chart Helm simple et découverte de Kustomize.
 - mise en place d'une stack de monitoring locale avec Prometheus, Grafana et AlertManager.
+- intégration d'une première couche DevSecOps avec Trivy, Gitleaks et des politiques OPA.
 
 ## Choix des outils
 
@@ -42,6 +44,9 @@ Les outils suivants ont été retenus pour rester cohérents avec les consignes 
 - **Terraform** pour l'infrastructure as code ;
 - **Ansible** pour l'automatisation de la configuration ;
 - **Minikube** pour le cluster Kubernetes local, conformément à l'option A du document `00-environnement.md`.
+- **Trivy** pour le scan de sécurité des images, dépendances et fichiers IaC ;
+- **Gitleaks** pour la détection de secrets ;
+- **OPA / Conftest** pour des contrôles de conformité simples sur Dockerfile et Kubernetes.
 
 ## GitHub Actions et outils de vérification
 
@@ -183,6 +188,23 @@ Les validations principales ont été les suivantes :
 - déclenchement réel de l'alerte `AppDown` ;
 - réception des webhooks `firing` puis `resolved` dans `webhook-mock`.
 
+## DevSecOps
+
+Une étape DevSecOps a été ajoutée avec :
+
+- intégration de Trivy dans le job `security` du pipeline ;
+- génération d'un rapport SARIF pour le scan d'image ;
+- détection de secrets avec Gitleaks ;
+- ajout de politiques OPA / Conftest pour le Dockerfile et les manifestes Kubernetes ;
+- création d'une checklist sécurité du projet.
+
+Les validations locales ont confirmé :
+
+- aucune fuite de secret détectée ;
+- aucune vulnérabilité critique dans l'image applicative ;
+- aucune misconfiguration critique dans le Dockerfile et l'infrastructure Terraform ;
+- des politiques OPA valides sur le Dockerfile et les manifests Kubernetes.
+
 ## Difficultés principales rencontrées
 
 Les principales difficultés rencontrées jusqu'à présent ont été les suivantes :
@@ -196,6 +218,7 @@ Les principales difficultés rencontrées jusqu'à présent ont été les suivan
 - nécessité de relancer et revérifier le cluster Minikube avant de commencer la partie Kubernetes ;
 - simplification du chart généré automatiquement par Helm pour garder une structure plus lisible.
 - nécessité de valider la chaîne complète d'alerte avec une panne contrôlée de l'application pour confirmer les webhooks.
+- présence de vulnérabilités `HIGH` remontées par Trivy dans la base Node de l'image Docker.
 
 ## Solutions apportées
 
@@ -209,6 +232,7 @@ Les solutions mises en place ont permis de garder le projet cohérent avec les c
 - validation progressive de Kubernetes avec des manifestes simples, proches du document, avant d'ajouter des éléments plus avancés ;
 - simplification volontaire des fichiers Helm pour garder un niveau compréhensible et proche d'une première prise en main ;
 - mise en place d'un `webhook-mock` local pour vérifier clairement les notifications AlertManager ;
+- choix d'un seuil bloquant sur les vulnérabilités `CRITICAL` pour l'image, tout en conservant le reporting `HIGH,CRITICAL` ;
 - maintien d'une documentation détaillée pour justifier les choix techniques et les ajustements effectués.
 
 ## Autres éléments pertinents
@@ -221,8 +245,10 @@ En complément, les points suivants ont également été réalisés :
 - premiers manifestes Kubernetes fonctionnels dans le dossier `k8s/` ;
 - ajout d'un chart Helm et d'une structure Kustomize dans le projet ;
 - ajout d'une stack de monitoring dans le dossier `monitoring/` ;
+- ajout de politiques de sécurité dans le dossier `policies/` ;
+- ajout d'une checklist sécurité du projet ;
 - rédaction d'une documentation détaillée pour suivre chaque étape du projet.
 
 ## Conclusion
 
-À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible, Kubernetes, Helm, Kustomize et monitoring. La suite du travail pourra s'appuyer sur cette base pour poursuivre les étapes suivantes, notamment la sécurité avancée et GitOps.
+À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible, Kubernetes, Helm, Kustomize, monitoring et premiers contrôles DevSecOps. La suite du travail pourra s'appuyer sur cette base pour poursuivre les étapes suivantes, notamment GitOps.
