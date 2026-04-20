@@ -270,6 +270,9 @@ En complément, les points suivants ont également été réalisés :
 - ajout de politiques de sécurité dans le dossier `policies/` ;
 - ajout d'une checklist sécurité du projet ;
 - ajout d'une structure GitOps dans le dossier `gitops/` ;
+- ajout d'un Ingress Kubernetes optionnel ;
+- validation du bonus Terraform avec workspaces ;
+- ajout d'un fichier `.trivyignore` préparé pour la gestion future d'exceptions Trivy ;
 - rédaction d'une documentation détaillée pour suivre chaque étape du projet.
 
 ## Conclusion

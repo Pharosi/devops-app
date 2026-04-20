@@ -1636,3 +1636,78 @@ Les solutions suivantes ont été retenues :
 ## Conclusion
 
 L'étape `11-gitops-argocd.md` peut être considérée comme validée. ArgoCD a été installé dans Minikube, une structure GitOps simple a été créée dans le dépôt, une application `dev` a été synchronisée avec succès et une modification du dépôt a bien provoqué une mise à jour automatique du déploiement.
+
+# Compléments optionnels réalisés
+
+## 04 - Bonus Terraform Workspaces
+
+Le bonus `workspaces` de l'étape `04` a été complété avec :
+
+- création des workspaces `dev` et `staging` dans `infra/terraform/environments/dev` ;
+- ajout du fichier `workspace-staging.tfvars` ;
+- application d'un environnement `staging` isolé avec :
+  - `environment = "staging"`
+  - `web_port = 8180`
+  - `db_port = 5433`
+
+Validation effectuée :
+
+```bash
+cd infra/terraform/environments/dev
+terraform workspace new dev
+terraform workspace new staging
+terraform apply -auto-approve -var-file=workspace-staging.tfvars -var="db_password=secret456"
+curl -I http://localhost:8180
+terraform destroy -auto-approve -var-file=workspace-staging.tfvars -var="db_password=secret456"
+terraform workspace select default
+```
+
+Résultats observés :
+
+- les workspaces ont bien été créés ;
+- l'environnement `staging` a été déployé sans entrer en conflit avec `dev` ;
+- l'accès HTTP sur `http://localhost:8180` a répondu correctement ;
+- les ressources `staging` ont ensuite été détruites pour laisser un environnement propre.
+
+## 07 - Ingress optionnel Kubernetes
+
+L'Ingress optionnel de l'étape `07` a également été ajouté avec :
+
+- création de `k8s/ingress.yaml` ;
+- activation de l'addon `ingress` dans Minikube ;
+- déploiement de l'Ingress `devops-app-ingress`.
+
+Validation effectuée :
+
+```bash
+minikube addons enable ingress
+kubectl apply -f k8s/ingress.yaml
+kubectl get ingress devops-app-ingress -n devops-training
+kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8088:80
+curl -I -H "Host: devops.local" http://localhost:8088
+```
+
+Résultats observés :
+
+- le controller ingress NGINX a été démarré ;
+- l'Ingress a bien obtenu une adresse dans son status ;
+- le routage a été validé avec un `curl` utilisant le host `devops.local` ;
+- la réponse HTTP était `200 OK`.
+
+## 10 - Fichier `.trivyignore`
+
+Le document `10` proposait un fichier `.trivyignore` en aide. Un fichier a été ajouté à la racine du projet.
+
+Choix retenu :
+
+- le fichier est présent ;
+- aucune vulnérabilité n'y est ignorée pour le moment ;
+- des exemples commentés ont été laissés pour montrer le mécanisme sans masquer artificiellement des résultats.
+
+## Conclusion
+
+Ces compléments optionnels permettent de renforcer encore le projet :
+
+- démonstration des workspaces Terraform ;
+- ajout d'un Ingress Kubernetes fonctionnel ;
+- préparation propre d'un mécanisme `.trivyignore` sans contourner les scans existants.
