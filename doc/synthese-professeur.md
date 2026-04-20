@@ -1,280 +1,83 @@
 # Synthèse du projet DevOps
 
-## Vue d'ensemble
+Ce document présente une synthèse courte du travail réalisé dans le projet. La documentation détaillée reste disponible dans `doc/documentation-detaillee-projet-devops.md`.
 
-Ce document présente une synthèse courte du travail déjà réalisé dans le projet DevOps. Une documentation plus détaillée est également disponible dans `doc/documentation-detaillee-projet-devops.md`.
+## Ce qui a été fait
 
-À ce stade, les étapes suivantes ont déjà été réalisées et validées :
+Le projet a été réalisé jusqu'aux consignes `00` à `11`, avec quelques compléments optionnels. L'objectif a été de partir d'une application simple, puis de construire autour d'elle une chaîne DevOps complète.
 
-- `00-environnement.md`
-- `01-pipeline-cicd.md`
-- `02-github-actions.md`
-- `03-terraform-init.md`
-- `04-terraform-modules.md`
-- `05-ansible-playbook.md`
-- `06-docker-avance.md`
-- `07-kubernetes-deploy.md`
-- `08-helm-charts.md`
-- `09-prometheus-grafana.md`
-- `10-devsecops-scan.md`
-- `11-gitops-argocd.md`
+Les éléments principaux déjà mis en place sont les suivants :
 
-## Étapes réalisées jusqu'à présent
+- préparation de l'environnement local ;
+- pipeline CI/CD avec GitHub Actions ;
+- infrastructure simple avec Terraform, puis structure modulaire ;
+- base Ansible avec playbooks, rôles et test d'idempotence ;
+- conteneurisation avec Docker et Docker Compose ;
+- déploiement sur Kubernetes avec Minikube ;
+- utilisation de Helm, Kustomize, Prometheus, Grafana, Trivy et ArgoCD.
 
-Jusqu'ici, le travail réalisé peut être résumé de la manière suivante :
+## Comment le projet a été construit
 
-- préparation complète de l'environnement local ;
-- mise en place d'une pipeline CI/CD avec GitHub Actions ;
-- évolution de cette pipeline avec workflow réutilisable, environnements et déploiements distincts ;
-- premiers travaux avec Terraform, puis refactorisation modulaire ;
-- mise en place d'une base Ansible avec playbooks, roles et validation de l'idempotence ;
-- optimisation Docker avancée avec comparaison d'images et validation d'une stack complète avec Docker Compose ;
-- premiers déploiements Kubernetes sur Minikube avec PostgreSQL et application ;
-- création d'un chart Helm simple et découverte de Kustomize ;
-- mise en place d'une stack de monitoring locale avec Prometheus, Grafana et AlertManager ;
-- intégration d'une première couche DevSecOps avec Trivy, Gitleaks et des politiques OPA ;
-- mise en place d'une première logique GitOps avec ArgoCD.
+Le travail a été fait progressivement, en suivant l'ordre des consignes. Le but n'était pas seulement d'avoir une application qui fonctionne, mais aussi de montrer comment la tester, l'automatiser, la déployer et la superviser.
+
+Le pipeline GitHub Actions a été organisé de façon simple :
+
+1. exécution des tests ;
+2. build de l'image Docker ;
+3. vérifications de sécurité ;
+4. préparation du déploiement sur `staging` puis `production`.
+
+L'idée du CI/CD dans ce projet a donc été d'automatiser les contrôles et de rendre le passage entre développement et déploiement plus clair et plus fiable.
 
 ## Choix des outils
 
-Les outils suivants ont été retenus pour rester cohérents avec les consignes du cours et avec une logique DevOps classique :
+Les outils retenus sont ceux qui correspondaient le mieux aux consignes et à une logique DevOps classique :
 
-- **Git et GitHub** pour le versionnement du projet et l'hébergement du code ;
-- **GitHub Actions** pour la mise en place de la CI/CD ;
-- **Docker** pour la conteneurisation de l'application ;
-- **Docker Compose** pour l'orchestration locale d'une stack complète ;
-- **Terraform** pour l'infrastructure as code ;
-- **Ansible** pour l'automatisation de la configuration ;
-- **Minikube** pour le cluster Kubernetes local, conformément à l'option A du document `00-environnement.md` ;
-- **Trivy** pour le scan de sécurité des images, dépendances et fichiers IaC ;
-- **Gitleaks** pour la détection de secrets ;
-- **OPA / Conftest** pour des contrôles de conformité simples sur Dockerfile et Kubernetes ;
-- **ArgoCD** pour la synchronisation GitOps du cluster Kubernetes.
+- `GitHub Actions` pour la pipeline CI/CD ;
+- `Docker` et `Docker Compose` pour la conteneurisation et les tests locaux ;
+- `Terraform` pour l'infrastructure as code ;
+- `Ansible` pour l'automatisation de la configuration ;
+- `Minikube` pour le cluster Kubernetes local ;
+- `Helm` et `Kustomize` pour organiser les déploiements Kubernetes ;
+- `Prometheus` et `Grafana` pour le monitoring ;
+- `Trivy`, `Gitleaks` et `OPA / Conftest` pour la sécurité ;
+- `ArgoCD` pour la partie GitOps.
 
-## GitHub Actions et outils de vérification
+## Difficultés rencontrées
 
-Le pipeline GitHub Actions a été structuré de manière progressive :
+Les principales difficultés ont surtout été liées à l'environnement local et à l'intégration entre les outils.
 
-- exécution des tests automatisés ;
-- build de l'image Docker ;
-- étape de vérification de sécurité ;
-- déploiement simulé.
-
-Une version plus avancée du pipeline a ensuite été mise en place avec :
-
-- un workflow Docker réutilisable ;
-- une action composite locale ;
-- deux environnements de déploiement : `staging` et `production`.
-
-Les environnements GitHub ont également été configurés de la manière suivante :
-
-- `staging` sans protection ;
-- `production` avec reviewer obligatoire et délai d'attente.
-
-## Explication du CI/CD
-
-Le principe de CI/CD appliqué dans ce projet est le suivant :
-
-- **CI (Continuous Integration)** : chaque changement envoyé sur le dépôt déclenche automatiquement des vérifications, notamment les tests et la construction de l'image Docker ;
-- **CD (Continuous Delivery / Deployment)** : une fois les vérifications réussies, le pipeline prépare ou simule le déploiement selon la branche et l'environnement visé.
-
-Cette approche permet :
-
-- d'automatiser les contrôles ;
-- de réduire les vérifications manuelles ;
-- de sécuriser la qualité du code avant déploiement ;
-- de structurer clairement le passage entre développement, staging et production.
-
-## Pipeline de déploiement
-
-Le pipeline mis en place suit la logique suivante :
-
-1. exécution des tests sur plusieurs versions de Node.js ;
-2. construction de l'image Docker ;
-3. vérification de sécurité ;
-4. déploiement vers `staging` ;
-5. déploiement vers `production` sur `main`, avec approbation et temporisation.
-
-Ce fonctionnement a été validé à la fois sur `develop` et sur `main`.
-
-## Détail du pipeline
-
-Le pipeline principal repose sur les éléments suivants :
-
-- un workflow principal `ci.yml` ;
-- un workflow réutilisable pour la construction Docker ;
-- des jobs séparés pour `test`, `build`, `security`, `deploy-staging` et `deploy-production`.
-
-Ce découpage permet une lecture plus claire du pipeline, une meilleure maintenance et une logique plus proche des pratiques professionnelles.
-
-## Terraform
-
-Deux étapes principales ont déjà été réalisées avec Terraform :
-
-- une première étape d'initialisation avec création simple de ressources Docker ;
-- une seconde étape modulaire avec :
-  - un module `webapp` ;
-  - un module `database` ;
-  - un environnement `dev`.
-
-Les validations suivantes ont été réalisées :
-
-- `terraform init`
-- `terraform plan`
-- `terraform apply`
-- vérification des ressources créées
-- `terraform destroy`
-
-L'objectif était de démontrer le cycle complet de l'infrastructure as code.
-
-## Docker
-
-Le travail réalisé avec Docker a porté sur deux aspects :
-
-- la conteneurisation simple de l'application ;
-- l'optimisation avancée de l'image.
-
-Une comparaison a été réalisée entre :
-
-- une image non optimisée `app:bad`
-- une image multi-stage optimisée `app:optimized`
-
-Résultats observés :
-
-- `app:bad` = `1.57GB`
-- `app:optimized` = `194MB`
-
-Une stack Docker Compose complète a également été validée avec :
-
-- l'application ;
-- PostgreSQL ;
-- Redis ;
-- Nginx comme reverse proxy.
-
-## Kubernetes
-
-La partie Kubernetes a commencé avec un déploiement simple sur Minikube. Les éléments suivants ont été validés :
-
-- un namespace dédié ;
-- une ConfigMap et un Secret ;
-- un déploiement PostgreSQL avec PVC ;
-- un déploiement applicatif avec plusieurs replicas ;
-- un service `ClusterIP` ;
-- un accès de test via `port-forward` ;
-- une démonstration de scaling, rolling update et rollback.
-
-## Helm et Kustomize
-
-Une première étape Helm a ensuite été réalisée pour transformer le déploiement Kubernetes en chart plus réutilisable. Les points validés sont les suivants :
-
-- création d'un chart Helm simple ;
-- ajout de `values-dev.yaml` et `values-prod.yaml` ;
-- validation avec `helm lint` et `helm template` ;
-- installation, upgrade, rollback et historique de release ;
-- mise en place d'une structure Kustomize simple avec `base`, `dev` et `prod`.
-
-## Monitoring
-
-La partie monitoring a ensuite été mise en place avec une stack locale composée de :
-
-- Prometheus ;
-- Grafana ;
-- AlertManager ;
-- node-exporter ;
-- un service `webhook-mock`.
-
-Les validations principales ont été les suivantes :
-
-- targets Prometheus en état `UP` ;
-- dashboard Grafana provisionné automatiquement ;
-- règles d'alertes chargées ;
-- déclenchement réel de l'alerte `AppDown` ;
-- réception des webhooks `firing` puis `resolved` dans `webhook-mock`.
-
-## DevSecOps
-
-Une étape DevSecOps a été ajoutée avec :
-
-- intégration de Trivy dans le job `security` du pipeline ;
-- génération d'un rapport SARIF pour le scan d'image ;
-- détection de secrets avec Gitleaks ;
-- ajout de politiques OPA / Conftest pour le Dockerfile et les manifestes Kubernetes ;
-- création d'une checklist sécurité du projet.
-
-Les validations locales ont confirmé :
-
-- aucune fuite de secret détectée ;
-- aucune vulnérabilité critique dans l'image applicative ;
-- aucune misconfiguration critique dans le Dockerfile et l'infrastructure Terraform ;
-- des politiques OPA valides sur le Dockerfile et les manifests Kubernetes.
-
-## GitOps avec ArgoCD
-
-Une première étape GitOps a été mise en place avec ArgoCD :
-
-- installation d'ArgoCD dans Minikube ;
-- création d'un dossier `gitops/` dans le projet ;
-- base Kustomize et overlays `dev`, `staging` et `prod` ;
-- création d'un `AppProject` et d'une `Application` ArgoCD ;
-- synchronisation automatique d'un environnement `dev`.
-
-La démonstration la plus importante a été la suivante :
-
-- modification du dépôt GitOps sur le nombre de replicas ;
-- passage temporaire de l'application ArgoCD en `OutOfSync` ;
-- synchronisation automatique ;
-- mise à jour effective du deployment Kubernetes.
-
-## Difficultés principales rencontrées
-
-Les principales difficultés rencontrées jusqu'à présent ont été les suivantes :
-
-- démarrage initial de l'environnement local, avec plusieurs outils à installer et à valider ;
-- configuration de l'authentification GitHub avec des identifiants personnels et une connexion SSH bloquée sur le port `22` ;
-- ajustement de certains workflows GitHub Actions pour corriger des références d'actions non résolues ;
-- nécessité d'adapter légèrement certains exemples du cours pour qu'ils fonctionnent avec la structure réelle du projet ;
-- lenteur importante du build de l'image Docker non optimisée ;
-- configuration Ansible sur des conteneurs minimaux ne disposant pas immédiatement des prérequis nécessaires ;
-- nécessité de relancer et revérifier le cluster Minikube avant de commencer la partie Kubernetes ;
-- simplification du chart généré automatiquement par Helm pour garder une structure plus lisible ;
-- nécessité de valider la chaîne complète d'alerte avec une panne contrôlée de l'application pour confirmer les webhooks ;
-- présence de vulnérabilités `HIGH` remontées par Trivy dans la base Node de l'image Docker ;
-- besoin d'adapter la démonstration GitOps à un cluster Minikube local sans registry publique dédiée.
+- Au début du projet, il a fallu installer et valider plusieurs outils en parallèle sur macOS, ce qui a demandé du temps avant d'avoir un environnement vraiment stable.
+- La configuration GitHub et GitHub Actions a demandé plusieurs ajustements, notamment pour l'authentification SSH, certaines actions introuvables, et quelques références de versions qui ne fonctionnaient pas directement.
+- La partie Terraform a demandé des adaptations sur la version de l'outil, la structure modulaire, puis sur les tests avec les workspaces pour bien séparer les environnements.
+- Avec Docker, certaines constructions d'images étaient plus lourdes que prévu, en particulier la comparaison entre une image volontairement mauvaise et une image optimisée.
+- Sur Kubernetes et ArgoCD, la difficulté principale a été de faire fonctionner correctement un environnement local Minikube, avec plusieurs étapes de vérification avant d'obtenir un déploiement stable.
+- D'une manière générale, plusieurs exemples du cours ont dû être légèrement adaptés pour fonctionner avec la structure réelle du projet, tout en essayant de rester le plus fidèle possible aux consignes du professeur.
 
 ## Solutions apportées
 
-Les solutions mises en place ont permis de garder le projet cohérent avec les consignes tout en assurant un fonctionnement réel :
+Pour avancer proprement, chaque étape a été validée progressivement avec des tests simples : `curl`, `docker ps`, `kubectl`, `terraform plan/apply/destroy`, `ansible-playbook`, interfaces web quand c'était utile, et vérification du pipeline GitHub Actions.
 
-- installation et validation progressive des outils requis sur macOS ;
-- utilisation de `ssh.github.com` sur le port `443` pour contourner le blocage réseau GitHub ;
-- correction et mise à jour des workflows GitHub Actions ;
-- conservation du code du professeur autant que possible, avec uniquement des adaptations minimales lorsque cela était nécessaire pour exécuter le projet ;
-- validation systématique par tests locaux, builds Docker, exécutions Terraform, Ansible et GitHub Actions ;
-- validation progressive de Kubernetes avec des manifestes simples, proches du document, avant d'ajouter des éléments plus avancés ;
-- simplification volontaire des fichiers Helm pour garder un niveau compréhensible et proche d'une première prise en main ;
-- mise en place d'un `webhook-mock` local pour vérifier clairement les notifications AlertManager ;
-- choix d'un seuil bloquant sur les vulnérabilités `CRITICAL` pour l'image, tout en conservant le reporting `HIGH,CRITICAL` ;
-- utilisation de `minikube image load` pour rendre l'image disponible au cluster dans la partie GitOps ;
-- maintien d'une documentation détaillée pour justifier les choix techniques et les ajustements effectués.
+- Pour l'environnement local, la solution a été de vérifier les outils un par un et de ne passer à l'étape suivante qu'une fois le fonctionnement confirmé.
+- Pour GitHub et GitHub Actions, les problèmes ont été résolus en corrigeant progressivement les workflows, en mettant à jour certaines actions et en ajustant la configuration SSH quand c'était nécessaire.
+- Pour Terraform, la méthode utilisée a été de travailler par petites validations successives : `init`, `plan`, `apply`, vérification, puis `destroy`, avant d'ajouter les modules et les workspaces.
+- Pour Docker, la solution a été de garder une approche simple : comparer clairement une image non optimisée et une image multi-stage plus propre, avec des tests réels sur le build et la taille finale.
+- Pour Kubernetes, Helm, le monitoring et ArgoCD, la logique a été la même : commencer avec une version simple et fonctionnelle, puis ajouter les éléments plus avancés seulement après validation.
+- Quand une adaptation était nécessaire, l'objectif a toujours été de rester au plus proche du document du cours, avec des modifications minimales et justifiées. Cela a permis de garder un projet cohérent, compréhensible et réellement exécutable.
 
-## Autres éléments pertinents
+## Résultat actuel
 
-En complément, les points suivants ont également été réalisés :
+À ce stade, le projet montre une chaîne DevOps complète autour d'une application simple :
 
-- préparation complète de l'environnement local ;
-- validation du cluster Minikube ;
-- mise en place d'une base Ansible avec inventaire, playbooks, roles et démonstration d'idempotence ;
-- premiers manifestes Kubernetes fonctionnels dans le dossier `k8s/` ;
-- ajout d'un chart Helm et d'une structure Kustomize dans le projet ;
-- ajout d'une stack de monitoring dans le dossier `monitoring/` ;
-- ajout de politiques de sécurité dans le dossier `policies/` ;
-- ajout d'une checklist sécurité du projet ;
-- ajout d'une structure GitOps dans le dossier `gitops/` ;
-- ajout d'un Ingress Kubernetes optionnel ;
-- validation du bonus Terraform avec workspaces ;
-- ajout d'un fichier `.trivyignore` préparé pour la gestion future d'exceptions Trivy ;
-- rédaction d'une documentation détaillée pour suivre chaque étape du projet.
+- développement et versionnement ;
+- pipeline CI/CD ;
+- infrastructure et automatisation ;
+- conteneurisation ;
+- déploiement Kubernetes ;
+- monitoring ;
+- sécurité ;
+- GitOps.
 
-## Conclusion
+Des éléments optionnels ont aussi été ajoutés, comme un `Ingress` Kubernetes, des workspaces Terraform et un fichier `.trivyignore`, pour compléter le projet sans en changer l'esprit.
 
-À ce stade, le projet est déjà structuré, versionné et validé sur plusieurs briques essentielles de l'écosystème DevOps : environnement, CI/CD, Docker, Terraform, Ansible, Kubernetes, Helm, Kustomize, monitoring, DevSecOps et GitOps. Le projet couvre maintenant l'ensemble des grandes étapes prévues dans les consignes.
+En résumé, l'objectif a été moins de produire une application complexe que de construire un environnement DevOps complet, progressif et cohérent autour d'une application volontairement simple.
