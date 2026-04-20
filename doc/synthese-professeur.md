@@ -1,4 +1,4 @@
-# Synthese du projet DevOps
+# Synthèse du projet DevOps
 
 ## Vue d'ensemble
 
@@ -30,9 +30,9 @@ Jusqu'ici, le travail réalisé peut être résumé de la manière suivante :
 - mise en place d'une base Ansible avec playbooks, roles et validation de l'idempotence ;
 - optimisation Docker avancée avec comparaison d'images et validation d'une stack complète avec Docker Compose ;
 - premiers déploiements Kubernetes sur Minikube avec PostgreSQL et application ;
-- création d'un chart Helm simple et découverte de Kustomize.
-- mise en place d'une stack de monitoring locale avec Prometheus, Grafana et AlertManager.
-- intégration d'une première couche DevSecOps avec Trivy, Gitleaks et des politiques OPA.
+- création d'un chart Helm simple et découverte de Kustomize ;
+- mise en place d'une stack de monitoring locale avec Prometheus, Grafana et AlertManager ;
+- intégration d'une première couche DevSecOps avec Trivy, Gitleaks et des politiques OPA ;
 - mise en place d'une première logique GitOps avec ArgoCD.
 
 ## Choix des outils
@@ -45,10 +45,10 @@ Les outils suivants ont été retenus pour rester cohérents avec les consignes 
 - **Docker Compose** pour l'orchestration locale d'une stack complète ;
 - **Terraform** pour l'infrastructure as code ;
 - **Ansible** pour l'automatisation de la configuration ;
-- **Minikube** pour le cluster Kubernetes local, conformément à l'option A du document `00-environnement.md`.
+- **Minikube** pour le cluster Kubernetes local, conformément à l'option A du document `00-environnement.md` ;
 - **Trivy** pour le scan de sécurité des images, dépendances et fichiers IaC ;
 - **Gitleaks** pour la détection de secrets ;
-- **OPA / Conftest** pour des contrôles de conformité simples sur Dockerfile et Kubernetes.
+- **OPA / Conftest** pour des contrôles de conformité simples sur Dockerfile et Kubernetes ;
 - **ArgoCD** pour la synchronisation GitOps du cluster Kubernetes.
 
 ## GitHub Actions et outils de vérification
@@ -236,9 +236,9 @@ Les principales difficultés rencontrées jusqu'à présent ont été les suivan
 - lenteur importante du build de l'image Docker non optimisée ;
 - configuration Ansible sur des conteneurs minimaux ne disposant pas immédiatement des prérequis nécessaires ;
 - nécessité de relancer et revérifier le cluster Minikube avant de commencer la partie Kubernetes ;
-- simplification du chart généré automatiquement par Helm pour garder une structure plus lisible.
-- nécessité de valider la chaîne complète d'alerte avec une panne contrôlée de l'application pour confirmer les webhooks.
-- présence de vulnérabilités `HIGH` remontées par Trivy dans la base Node de l'image Docker.
+- simplification du chart généré automatiquement par Helm pour garder une structure plus lisible ;
+- nécessité de valider la chaîne complète d'alerte avec une panne contrôlée de l'application pour confirmer les webhooks ;
+- présence de vulnérabilités `HIGH` remontées par Trivy dans la base Node de l'image Docker ;
 - besoin d'adapter la démonstration GitOps à un cluster Minikube local sans registry publique dédiée.
 
 ## Solutions apportées
